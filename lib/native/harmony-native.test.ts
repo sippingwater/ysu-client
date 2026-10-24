@@ -78,7 +78,12 @@ describe("native immersive window appearance", () => {
         },
       },
     }) as {
-      readWindowSafeArea(window: object): { top: number; right: number; bottom: number; left: number }
+      readWindowSafeArea(window: object): {
+        top: number
+        right: number
+        bottom: number
+        left: number
+      }
       applyWindowTheme(window: object, dark: boolean): Promise<void>
     }
   }
@@ -203,7 +208,7 @@ function storeFixture() {
   }
   const Store = loadNative("SecureStore", {
     "@kit.AssetStoreKit": { asset },
-    "@kit.ArkTS": { util },
+    "@kit.ArkTS": { util, url: nativeUrl },
   }).SecureStore as new () => NativeStore
   return {
     store: new Store(),
@@ -280,8 +285,25 @@ describe("actual ArkTS request policy", () => {
     }
     for (const route of policy.routes.filter((item) => item.path.startsWith("/jwmobile/"))) {
       expect(() => native.validate(route.method, `${route.origin}${route.path}`)).not.toThrow()
-      expect(() => native.validate(route.method === "GET" ? "POST" : "GET", `${route.origin}${route.path}`)).toThrow()
+      expect(() =>
+        native.validate(route.method === "GET" ? "POST" : "GET", `${route.origin}${route.path}`)
+      ).toThrow()
     }
+    for (const route of policy.skbirdRoutes) {
+      expect(() => native.validate(route.method, `${route.origin}${route.path}`)).not.toThrow()
+    }
+    for (const target of [
+      "http://api.app.zanao.com/thread/hot",
+      "https://b1.cdn.zanao.com/upload/image.jpg@!common",
+      "https://thirdwx.qlogo.cn/mmopen/avatar/132",
+    ]) {
+      expect(() => native.validate("GET", target)).not.toThrow()
+      expect(() =>
+        native.validate("GET", `${mfaPage}?service=${encodeURIComponent(target)}`)
+      ).toThrow()
+    }
+    expect(() => native.validate("GET", "http://api.app.zanao.com/thread/delete")).toThrow()
+    expect(() => native.validate("POST", "https://b1.cdn.zanao.com/upload/image.jpg")).toThrow()
     expect(() =>
       native.validate("GET", "https://cer.ysu.edu.cn/authserver/login?service=https://evil.example")
     ).toThrow()
@@ -293,7 +315,7 @@ describe("actual ArkTS network bridge", () => {
     "preserves an empty HTTP %i response without passing it to Base64",
     (status) => {
       const Bridge = loadNative("../bridge/NativeBridge", {
-        "@kit.ArkTS": { util },
+        "@kit.ArkTS": { util, url: nativeUrl },
         "../security/RequestPolicy": { RequestPolicy: class {} },
         "../security/SecureStore": { SecureStore: class {} },
         "@kit.RemoteCommunicationKit": { rcp: {} },
@@ -317,7 +339,7 @@ describe("actual ArkTS network bridge", () => {
     const sensitive = "https://example.invalid/?password=must-never-appear"
     const replies: Array<{ ok: boolean; error: string }> = []
     const Bridge = loadNative("../bridge/NativeBridge", {
-      "@kit.ArkTS": { util },
+      "@kit.ArkTS": { util, url: nativeUrl },
       "../security/RequestPolicy": {
         RequestPolicy: class {
           validate() {}
@@ -361,7 +383,7 @@ describe("actual ArkTS network bridge", () => {
     )
     await vi.waitFor(() => expect(replies).toHaveLength(1))
     expect(replies[0]).toMatchObject({ ok: false })
-    expect(replies[0].error).toContain("学校连接失败")
+    expect(replies[0].error).toContain("网络连接失败")
     expect(replies[0].error).toContain("1007900006")
     bridge.postMessage(
       JSON.stringify({
@@ -389,14 +411,21 @@ describe("actual ArkTS network bridge", () => {
     const sent: CapturedRequest[] = []
     const replies: string[] = []
     const options: SessionOptions[] = []
+    const savedSecrets: Array<[string, string]> = []
     const closed = vi.fn()
     const Policy = loadNative("RequestPolicy", {
       "@kit.ArkTS": { util, url: nativeUrl },
     }).RequestPolicy
     const Bridge = loadNative("../bridge/NativeBridge", {
-      "@kit.ArkTS": { util },
+      "@kit.ArkTS": { util, url: nativeUrl },
       "../security/RequestPolicy": { RequestPolicy: Policy },
-      "../security/SecureStore": { SecureStore: class {} },
+      "../security/SecureStore": {
+        SecureStore: class {
+          async set(key: string, value: string) {
+            savedSecrets.push([key, value])
+          }
+        },
+      },
       "@kit.RemoteCommunicationKit": {
         rcp: {
           Request: class {
@@ -437,8 +466,8 @@ describe("actual ArkTS network bridge", () => {
     bridge.initialize({
       getRawFileContentSync: () => new TextEncoder().encode(JSON.stringify(policy)),
     })
-    const message = (id: string, url: string) =>
-      JSON.stringify({ id, method: "http.request", params: { method: "GET", url } })
+    const message = (id: string, url: string, headers: Record<string, string> = {}) =>
+      JSON.stringify({ id, method: "http.request", params: { method: "GET", url, headers } })
     bridge.postMessage(message("h1", "https://cer.ysu.edu.cn/authserver/login"))
     expect(sent).toHaveLength(0)
     expect(replies).toHaveLength(0)
@@ -456,5 +485,47 @@ describe("actual ArkTS network bridge", () => {
     expect(replies[1]).toContain('"status":302')
     expect(replies[1]).toContain('"bodyBase64":""')
     await vi.waitFor(() => expect(closed).toHaveBeenCalledOnce())
+    const communityHeaders = {
+      "x-sc-token": "community-token",
+      "x-sc-ah": "signature",
+      "x-sc-device": "device",
+      "x-sc-td": "timestamp",
+      "x-sc-nd": "nonce",
+    }
+    bridge.postMessage(
+      message("h4", "http://api.app.zanao.com/thread/hot", {
+        ...communityHeaders,
+        cookie: "CASTGC=school",
+        referer: "https://cer.ysu.edu.cn/",
+      })
+    )
+    await vi.waitFor(() => expect(sent).toHaveLength(2))
+    expect(sent[1].headers).toEqual(communityHeaders)
+    bridge.postMessage(
+      message("h5", "https://b1.cdn.zanao.com/upload/image.jpg@!common", {
+        ...communityHeaders,
+        cookie: "CASTGC=school",
+      })
+    )
+    await vi.waitFor(() => expect(sent).toHaveLength(3))
+    expect(sent[2].headers).toEqual({})
+    bridge.postMessage(
+      message("h6", "https://cer.ysu.edu.cn/authserver/login", {
+        ...communityHeaders,
+        cookie: "CASTGC=school",
+      })
+    )
+    await vi.waitFor(() => expect(sent).toHaveLength(4))
+    expect(sent[3].headers).toEqual({ cookie: "CASTGC=school" })
+    bridge.postMessage(
+      JSON.stringify({
+        id: "h7",
+        method: "secure.set",
+        params: { key: "academic-client-skbird", value: "encrypted-by-asset-store" },
+      })
+    )
+    await vi.waitFor(() =>
+      expect(savedSecrets).toEqual([["academic-client-skbird", "encrypted-by-asset-store"]])
+    )
   })
 })

@@ -2,7 +2,14 @@ import { resourceManager } from '@kit.LocalizationKit';
 import { url, util } from '@kit.ArkTS';
 
 interface Route { origin: string; method: string; path: string; }
-interface PolicyData { version: number; routes: Route[]; appIds: string[]; }
+interface MediaRoute { origin: string; pathPrefix: string; }
+interface PolicyData {
+  version: number;
+  routes: Route[];
+  skbirdRoutes: Route[];
+  mediaRoutes: MediaRoute[];
+  appIds: string[];
+}
 
 export class RequestPolicy {
   private data: PolicyData;
@@ -19,8 +26,12 @@ export class RequestPolicy {
     if (parsed.username || parsed.password || parsed.port || /[%\\]/.test(parsed.pathname)) {
       throw new Error('Request rejected');
     }
-    const allowed = this.data.routes.some((route: Route) =>
-      route.origin === parsed.origin && route.method === method && route.path === parsed.pathname);
+    const schoolOrigin = /^https:\/\/(cer|jwxt|epay|ehall)\.ysu\.edu\.cn$/.test(parsed.origin);
+    if (depth > 0 && !schoolOrigin) throw new Error('Callback rejected');
+    const allowed = this.data.routes.concat(this.data.skbirdRoutes).some((route: Route) =>
+      route.origin === parsed.origin && route.method === method && route.path === parsed.pathname) ||
+      (method === 'GET' && this.data.mediaRoutes.some((route: MediaRoute) =>
+        route.origin === parsed.origin && parsed.pathname.startsWith(route.pathPrefix)));
     if (!allowed) throw new Error('Request rejected');
     if (parsed.pathname === '/jwapp/sys/emaphome/appShow.do' &&
       !this.data.appIds.includes(parsed.params.get('id') ?? '')) {

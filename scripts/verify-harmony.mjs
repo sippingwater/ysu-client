@@ -13,6 +13,30 @@ if (policy.routes.some((route) => !/^https:\/\/(cer|jwxt|epay|ehall)\.ysu\.edu\.
   !["GET", "POST"].includes(route.method) || /bysc|xgksrwxs|recharge|payment/i.test(route.path))) {
   throw new Error("Unexpected host or modifying action in request policy")
 }
+const client = readFileSync(join(root, "lib/extras/skbird/client.ts"), "utf8")
+const communityEndpoints = [...client.matchAll(/this\.call\(\s*"(GET|POST)",\s*"([^"]+)"/g)]
+  .map((match) => `${match[1]} ${match[2]}`).sort()
+const allowedCommunity = policy.skbirdRoutes.map((route) => {
+  if (route.origin !== "http://api.app.zanao.com") throw new Error("Unexpected community host")
+  return `${route.method} ${route.path}`
+}).sort()
+if (JSON.stringify(communityEndpoints) !== JSON.stringify(allowedCommunity)) {
+  throw new Error("Community policy differs from client endpoints")
+}
+const expectedMedia = [
+  { origin: "https://b1.cdn.zanao.com", pathPrefix: "/upload/" },
+  { origin: "https://thirdwx.qlogo.cn", pathPrefix: "/mmopen/" },
+  { origin: "https://thirdwx.qlogo.cn", pathPrefix: "/mmhead/" },
+]
+if (JSON.stringify(policy.mediaRoutes) !== JSON.stringify(expectedMedia)) throw new Error("Unexpected media policy")
+const network = JSON.parse(readFileSync(join(root,
+  "harmony/entry/src/main/resources/base/profile/network_config.json"), "utf8"))["network-security-config"]
+if (network["base-config"].cleartextTrafficPermitted !== false ||
+  JSON.stringify(network["domain-config"]) !== JSON.stringify([{
+    domains: [{ name: "api.app.zanao.com", "include-subdomains": false }], cleartextTrafficPermitted: true,
+  }]) || network["component-config"]["Remote Communication Kit"] !== true) {
+  throw new Error("Unexpected cleartext network exception")
+}
 const mobileRoutes = [
   ["GET", "/jwmobile/auth/index"],
   ["GET", "/jwmobile/biz/v410/"],
@@ -55,9 +79,13 @@ if (!login.includes('name="ysu-platform" content="harmony"')) throw new Error("W
 for (const page of ["dashboard/schedule/index.html", "dashboard/grades/index.html", "dashboard/exams/index.html"]) {
   if (!existsSync(join(www, page))) throw new Error(`Missing core route ${page}`)
 }
+for (const route of ["", "settings/", "thread/", "me/", "messages/"]) {
+  if (!existsSync(join(www, `dashboard/skbird/${route}index.html`))) throw new Error("Missing community page")
+}
 const result = {
   mode: "harmony-local-only", policySha256: createHash("sha256").update(policyBytes).digest("hex"),
-  reviewedRoutes: policy.routes.length, protectedHtmlPages: pages, webResourceBytes: bytes,
+  reviewedRoutes: policy.routes.length, communityRoutes: policy.skbirdRoutes.length,
+  mediaRoutes: policy.mediaRoutes.length, protectedHtmlPages: pages, webResourceBytes: bytes,
 }
 writeFileSync(join(root, "harmony/resource-verification.json"), JSON.stringify(result, null, 2) + "\n")
 console.log(JSON.stringify(result, null, 2))

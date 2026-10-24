@@ -1,6 +1,6 @@
 import { webview } from '@kit.ArkWeb';
 import { resourceManager } from '@kit.LocalizationKit';
-import { util } from '@kit.ArkTS';
+import { url, util } from '@kit.ArkTS';
 import { rcp } from '@kit.RemoteCommunicationKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { RequestPolicy } from '../security/RequestPolicy';
@@ -97,7 +97,7 @@ export class NativeBridge {
       return { id: message.id, ok: true, data: await this.request(params) };
     }
     const keys: string[] = ['academic-client-auth', 'academic-client-auth-token',
-      'academic-client-remember-me', 'ysu-auth', 'ysu-castgc', 'ysu-remember-me'];
+      'academic-client-remember-me', 'academic-client-skbird', 'ysu-auth', 'ysu-castgc', 'ysu-remember-me'];
     if (!params.key || !keys.includes(params.key)) throw new Error('Storage key rejected');
     if (message.method === 'secure.get') {
       return { id: message.id, ok: true, data: { value: await this.store.get(params.key) } };
@@ -116,9 +116,16 @@ export class NativeBridge {
   private async request(params: Params): Promise<NativeResponse> {
     if (!params.url || !params.method || !this.policy) throw new RequestFailure('请求参数无效，请更新应用后重试');
     try { this.policy.validate(params.method, params.url, params.body ?? ''); }
-    catch { throw new RequestFailure('学校接口未获准访问，请更新应用后重试'); }
+    catch { throw new RequestFailure('接口未获准访问，请更新应用后重试'); }
+    const origin = new url.URL(params.url).origin;
     const allowedHeaders: string[] = ['accept', 'accept-language', 'content-type',
-      'cookie', 'user-agent', 'referer', 'origin', 'x-requested-with'];
+      'user-agent', 'x-requested-with'];
+    if (/^https:\/\/(cer|jwxt|epay|ehall)\.ysu\.edu\.cn$/.test(origin)) {
+      allowedHeaders.push('cookie', 'referer', 'origin');
+    } else if (origin === 'http://api.app.zanao.com') {
+      allowedHeaders.push('x-sc-client', 'x-sc-platform', 'x-sc-device', 'x-sc-hb-v',
+        'x-sc-nt-v', 'x-sc-version', 'x-sc-alias', 'x-sc-td', 'x-sc-nd', 'x-sc-ah', 'x-sc-token');
+    }
     const headers: rcp.RequestHeaders = {};
     const sourceHeaders: Record<string, string> = params.headers ?? {};
     Object.keys(sourceHeaders).forEach((key: string) => {
@@ -137,14 +144,14 @@ export class NativeBridge {
     const options: rcp.SessionConfiguration = { requestConfiguration: configuration };
     let session: rcp.Session;
     try { session = rcp.createSession(options); }
-    catch (error) { throw new RequestFailure('学校网络服务初始化失败，请重新打开应用后重试', error as Error); }
+    catch (error) { throw new RequestFailure('网络服务初始化失败，请重新打开应用后重试', error as Error); }
     try {
       const request = new rcp.Request(params.url, params.method as rcp.HttpMethod, headers, params.body);
       const response = await session.fetch(request);
       return this.encodeResponse(response);
     } catch (error) {
       if (error instanceof RequestFailure) throw error;
-      throw new RequestFailure('学校连接失败，请检查网络后重试', error as Error);
+      throw new RequestFailure('网络连接失败，请检查网络后重试', error as Error);
     } finally { session.close(); }
   }
 
@@ -162,7 +169,7 @@ export class NativeBridge {
         // Redirects and 204 responses legitimately have no body; preserve their headers.
         bodyBase64: bytes.length === 0 ? '' : new util.Base64Helper().encodeToStringSync(bytes) };
     } catch (error) {
-      throw new RequestFailure('学校响应处理失败，请更新应用后重试', error as Error);
+      throw new RequestFailure('响应处理失败，请更新应用后重试', error as Error);
     }
   }
 }

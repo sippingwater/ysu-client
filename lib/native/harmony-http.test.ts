@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { SimpleCookieJar, fetchWithJar } from "@/lib/cookie"
+import { SimpleCookieJar, fetchWithJar, fetchStateless } from "@/lib/cookie"
 import { HarmonySecureStorage } from "@/lib/storage/harmony-secure"
 
 describe("Harmony bridge transport", () => {
@@ -9,6 +9,56 @@ describe("Harmony bridge transport", () => {
   afterEach(() => {
     vi.unstubAllEnvs()
     vi.unstubAllGlobals()
+  })
+
+  it("queues a feed's image burst within native capacity and preserves binary responses", async () => {
+    let active = 0
+    let maximum = 0
+    const pending: Array<() => void> = []
+    const send = vi.fn((raw: string) => {
+      const message = JSON.parse(raw)
+      active++
+      maximum = Math.max(maximum, active)
+      pending.push(() => {
+        active--
+        window.__ysuHarmonyReply!({
+          id: message.id,
+          ok: true,
+          data: {
+            status: 200,
+            headers: { "content-type": "image/png" },
+            bodyBase64: btoa("image"),
+          },
+        })
+      })
+    })
+    vi.stubGlobal("window", { YSUHarmony: { postMessage: send } })
+    const responses = Array.from({ length: 24 }, (_, i) =>
+      fetchStateless({
+        method: "GET",
+        url: `https://b1.cdn.zanao.com/upload/${i}.png@!common`,
+        redirect: "manual",
+        responseType: "arraybuffer",
+      })
+    )
+    await vi.waitFor(() => expect(pending).toHaveLength(6))
+    const cancelled = new AbortController()
+    const skipped = fetchStateless({
+      method: "GET",
+      url: "https://b1.cdn.zanao.com/upload/cancelled.png@!common",
+      redirect: "manual",
+      signal: cancelled.signal,
+    }).catch((error: Error) => error.name)
+    cancelled.abort()
+    for (let i = 0; i < 24; i++) {
+      await vi.waitFor(() => expect(pending.length).toBeGreaterThan(0))
+      pending.shift()!()
+    }
+    const results = await Promise.all(responses)
+    expect(maximum).toBe(6)
+    expect(send).toHaveBeenCalledTimes(24)
+    expect(await results[23].text()).toBe("image")
+    expect(await skipped).toBe("AbortError")
   })
 
   it("follows redirects in the app, with each hop's cookies, without browser fetch", async () => {

@@ -14,6 +14,21 @@ interface NativeResponse {
   bodyBase64: string
 }
 
+// A feed can mount dozens of images together; leave native slots for auth and storage.
+const httpWaiters: Array<() => void> = []
+let activeHttp = 0
+async function withHttpSlot<T>(send: () => Promise<T>): Promise<T> {
+  if (activeHttp >= 6) await new Promise<void>((resolve) => httpWaiters.push(resolve))
+  else activeHttp++
+  try {
+    return await send()
+  } finally {
+    const next = httpWaiters.shift()
+    if (next) next()
+    else activeHttp--
+  }
+}
+
 export async function harmonyHttpSend(
   jar: SimpleCookieJar,
   req: HttpRequest
@@ -31,12 +46,15 @@ export async function harmonyHttpSend(
   headers["accept-language"] ||= "zh-CN,zh;q=0.9,en;q=0.8"
   const cookies = await jar.getCookieString(parsed.toString())
   if (cookies) headers.cookie = cookies
-  const response = await harmonyCall<NativeResponse>("http.request", {
-    method: req.method,
-    url: parsed.toString(),
-    headers,
-    body: req.body?.toString(),
-    timeoutMs: Math.min(req.timeoutMs ?? 30_000, 60_000),
+  const response = await withHttpSlot(() => {
+    if (req.signal?.aborted) throw new DOMException("The operation was aborted.", "AbortError")
+    return harmonyCall<NativeResponse>("http.request", {
+      method: req.method,
+      url: parsed.toString(),
+      headers,
+      body: req.body?.toString(),
+      timeoutMs: Math.min(req.timeoutMs ?? 30_000, 60_000),
+    })
   })
   if (req.signal?.aborted) throw new DOMException("The operation was aborted.", "AbortError")
   const normalized: Record<string, string | string[]> = {}

@@ -1,0 +1,18 @@
+{
+  "network-security-config": {
+    "base-config": {
+      "cleartextTrafficPermitted": false
+    },
+    "domain-config": [
+      {
+        "domains": [
+          { "name": "api.app.zanao.com", "include-subdomains": false }
+        ],
+        "cleartextTrafficPermitted": true
+      }
+    ],
+    "component-config": {
+      "Remote Communication Kit": true
+    }
+  }
+}

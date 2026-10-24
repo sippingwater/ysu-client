@@ -1,6 +1,31 @@
 {
   "version": 1,
-  "description": "Reviewed exact endpoints: auth, reads, student evaluation and user-initiated course sign-in/out. No proxy or other mutations.",
+  "description": "Reviewed school endpoints and Skbird community endpoints, with separate credentials and HTTPS media. No proxy or unlisted actions.",
+  "skbirdRoutes": [
+    { "origin": "http://api.app.zanao.com", "method": "GET", "path": "/thread/hot" },
+    { "origin": "http://api.app.zanao.com", "method": "GET", "path": "/thread/toplist" },
+    { "origin": "http://api.app.zanao.com", "method": "GET", "path": "/thread/v2/list" },
+    { "origin": "http://api.app.zanao.com", "method": "GET", "path": "/thread/rewardlist" },
+    { "origin": "http://api.app.zanao.com", "method": "GET", "path": "/catelist" },
+    { "origin": "http://api.app.zanao.com", "method": "POST", "path": "/thread/v2/searchoptions" },
+    { "origin": "http://api.app.zanao.com", "method": "POST", "path": "/thread/v2/search" },
+    { "origin": "http://api.app.zanao.com", "method": "POST", "path": "/thread/info" },
+    { "origin": "http://api.app.zanao.com", "method": "POST", "path": "/thread/mark/post" },
+    { "origin": "http://api.app.zanao.com", "method": "POST", "path": "/thread/like" },
+    { "origin": "http://api.app.zanao.com", "method": "GET", "path": "/thread/mark/list" },
+    { "origin": "http://api.app.zanao.com", "method": "GET", "path": "/user/info" },
+    { "origin": "http://api.app.zanao.com", "method": "GET", "path": "/user/statinfo" },
+    { "origin": "http://api.app.zanao.com", "method": "GET", "path": "/msg/list" },
+    { "origin": "http://api.app.zanao.com", "method": "GET", "path": "/msg/newlist" },
+    { "origin": "http://api.app.zanao.com", "method": "GET", "path": "/msg/unum" },
+    { "origin": "http://api.app.zanao.com", "method": "GET", "path": "/msg/like/stat" },
+    { "origin": "http://api.app.zanao.com", "method": "GET", "path": "/comment/list" }
+  ],
+  "mediaRoutes": [
+    { "origin": "https://b1.cdn.zanao.com", "pathPrefix": "/upload/" },
+    { "origin": "https://thirdwx.qlogo.cn", "pathPrefix": "/mmopen/" },
+    { "origin": "https://thirdwx.qlogo.cn", "pathPrefix": "/mmhead/" }
+  ],
   "appIds": [
     "d71f7b57b4f348368f06c3e9a2a0988f",
     "377b6493556d4f0b86d116ca00cd1b6e",

@@ -11,11 +11,18 @@ export function assertHarmonyRequest(
   if (parsed.username || parsed.password || parsed.port || /[%\\]/.test(parsed.pathname)) {
     throw new Error("安全策略禁止此请求")
   }
-  const allowed = policy.routes.some(
-    (route) =>
-      route.origin === parsed.origin && route.method === method && route.path === parsed.pathname
-  )
-  if (!allowed) throw new Error("仅允许直接访问已审核的学校认证、查询、评教与签到接口")
+  const schoolOrigin = /^https:\/\/(cer|jwxt|epay|ehall)\.ysu\.edu\.cn$/.test(parsed.origin)
+  if (depth > 0 && !schoolOrigin) throw new Error("认证回调仅允许学校接口")
+  const allowed =
+    [...policy.routes, ...policy.skbirdRoutes].some(
+      (route) =>
+        route.origin === parsed.origin && route.method === method && route.path === parsed.pathname
+    ) ||
+    (method === "GET" &&
+      policy.mediaRoutes.some(
+        (route) => route.origin === parsed.origin && parsed.pathname.startsWith(route.pathPrefix)
+      ))
+  if (!allowed) throw new Error("仅允许直接访问已审核的学校与森空鸟接口")
   if (
     parsed.pathname === "/jwapp/sys/emaphome/appShow.do" &&
     !policy.appIds.includes(parsed.searchParams.get("id") ?? "")

@@ -110,4 +110,50 @@ describe("Harmony local-only security policy", () => {
       assertHarmonyRequest("GET", `${official}/jwmobile/index.html?token=test`)
     ).toThrow()
   })
+
+  it("allows community endpoints and HTTPS images while keeping school callbacks separate", () => {
+    for (const route of policy.skbirdRoutes) {
+      expect(() => assertHarmonyRequest(route.method, `${route.origin}${route.path}`)).not.toThrow()
+      expect(() => assertHarmonyRequest("DELETE", `${route.origin}${route.path}`)).toThrow()
+    }
+    for (const image of [
+      "https://b1.cdn.zanao.com/upload/image.jpg@!common",
+      "https://thirdwx.qlogo.cn/mmopen/avatar/132",
+      "https://thirdwx.qlogo.cn/mmhead/avatar/132",
+    ]) {
+      expect(() => assertHarmonyRequest("GET", image)).not.toThrow()
+      expect(() => assertHarmonyRequest("POST", image)).toThrow()
+      expect(() =>
+        assertHarmonyRequest(
+          "GET",
+          `https://cer.ysu.edu.cn/authserver/login?service=${encodeURIComponent(image)}`
+        )
+      ).toThrow()
+    }
+    for (const target of [
+      "http://api.app.zanao.com/user/info",
+      "http://api.app.zanao.com/thread/like",
+    ]) {
+      expect(() =>
+        assertHarmonyRequest(
+          "POST",
+          "https://cer.ysu.edu.cn/authserver/login",
+          `service=${encodeURIComponent(target)}`
+        )
+      ).toThrow()
+    }
+  })
+
+  it.each([
+    "http://api.app.zanao.com/thread/delete",
+    "http://api.app.zanao.com/user/login",
+    "http://api.app.zanao.com.evil.example/thread/hot",
+    "http://api.app.zanao.com:8080/thread/hot",
+    "http://b1.cdn.zanao.com/upload/image.jpg",
+    "https://b2.cdn.zanao.com/upload/image.jpg",
+    "https://b1.cdn.zanao.com/private/file",
+    "https://thirdwx.qlogo.cn/unreviewed/file",
+  ])("rejects unreviewed community or media targets: %s", (target) => {
+    expect(() => assertHarmonyRequest("GET", target)).toThrow()
+  })
 })

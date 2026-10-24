@@ -18,6 +18,7 @@ import {
 import { useTranslation } from "@/lib/i18n/use-translation"
 import { useBackLayer } from "@/hooks/use-back-handler"
 import { isCapacitor } from "@/lib/native/platform"
+import { isHarmony } from "@/lib/native/harmony"
 import { YsuFile } from "@/lib/native/ysu-file"
 
 /** 关闭动画时长，与过渡类 duration 匹配 */
@@ -408,8 +409,8 @@ function SaveSheet({
  * 森空鸟 CDN 图片。双端统一走 fetchStateless 拉取后转 object URL：
  * - Native：WebView 默认拦截 https 页面加载 http 子资源（mixed content）。
  *
- * 例外：HTTPS 直链（如微信头像 thirdwx.qlogo.cn）无 mixed content 问题，
- * 也不需 activation 头，直接用 <img> 加载。
+ * 例外：Android/Web 的 HTTPS 直链直接用 <img> 加载。
+ * Harmony 的外部图片统一经过原生通道转为 blob，兼容包内 CSP 与资源拦截。
  *
  * zoomable：点击打开全屏查看器。桌面端点击/滚轮以光标为焦点缩放、拖拽平移；
  * 移动端双击缩放、捏合缩放、单指拖动；点击空白处或 Esc 关闭。
@@ -432,11 +433,12 @@ export function SkbirdImage({
   const [src, setSrc] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
   const [zoomed, setZoomed] = useState(false)
-  const direct = url.startsWith("https://")
+  const direct = !isHarmony() && url.startsWith("https://")
 
   useEffect(() => {
     if (direct) return
     let cancelled = false
+    const controller = new AbortController()
     let objectUrl: string | null = null
     setSrc(null)
     setFailed(false)
@@ -447,6 +449,7 @@ export function SkbirdImage({
       // CapacitorHttp 的二进制响应类型是 arraybuffer，原生桥接返回 base64
       // 字符串，再由 cookie.ts 的 arrayBuffer() 统一解码。
       responseType: "arraybuffer",
+      signal: controller.signal,
     })
       .then(async (res) => {
         if (res.status !== 200) throw new Error(`HTTP ${res.status}`)
@@ -461,6 +464,7 @@ export function SkbirdImage({
       })
     return () => {
       cancelled = true
+      controller.abort()
       if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
   }, [url, direct])

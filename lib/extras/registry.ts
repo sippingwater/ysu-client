@@ -7,6 +7,5 @@
  */
 import type { DashboardFeature } from "@/lib/dashboard-features"
 import { skbirdFeature } from "./skbird/feature"
-import { isHarmony } from "@/lib/native/harmony"
 
-export const EXTRA_FEATURES: DashboardFeature[] = isHarmony() ? [] : [skbirdFeature]
+export const EXTRA_FEATURES: DashboardFeature[] = [skbirdFeature]
