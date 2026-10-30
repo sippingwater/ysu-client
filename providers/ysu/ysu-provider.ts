@@ -169,9 +169,9 @@ function ysuCapabilities(): AcademicCapabilities {
     labSchedule: isFeatureAvailable("hasLabSchedule"),
     exams: true,
     makeupExams: true,
-    laborEducation: !isHarmony() && getSchoolConfig().ldxt !== undefined,
-    innovationCredits: !isHarmony() && getSchoolConfig().scxt !== undefined,
-    comprehensiveEval: !isHarmony() && getSchoolConfig().xgxt !== undefined,
+    laborEducation: getSchoolConfig().ldxt !== undefined,
+    innovationCredits: getSchoolConfig().scxt !== undefined,
+    comprehensiveEval: getSchoolConfig().xgxt !== undefined,
     schoolSchedule: true,
     gpa: true,
     evaluation: true,
@@ -183,7 +183,7 @@ function ysuCapabilities(): AcademicCapabilities {
     termCalendar: true,
     mobileSignin: isFeatureAvailable("hasMobile"),
     ecard: true,
-    meter: !isHarmony(),
+    meter: true,
     epay: true,
   }
 }

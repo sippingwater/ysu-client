@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next"
+import { Fragment } from "react"
 import { Geist, Geist_Mono } from "next/font/google"
 
 import "./globals.css"
@@ -30,6 +31,9 @@ const fontMono = Geist_Mono({
   variable: "--font-mono",
   preload: false,
 })
+
+const harmonyBuild = process.env.NEXT_PUBLIC_APP_PLATFORM === "harmony"
+const PlatformGate = harmonyBuild ? Fragment : ActivationGate
 
 export const metadata: Metadata = {
   title: {
@@ -70,24 +74,24 @@ export default function RootLayout({
     >
       <body>
         <I18nProvider>
-          <PwaRegister />
-          <PwaUpdatePrompt />
+          {!harmonyBuild && <PwaRegister />}
+          {!harmonyBuild && <PwaUpdatePrompt />}
           <ThemeProvider>
             <ProviderProvider>
               <HarmonySecurityGate>
-                <ActivationGate>
+                <PlatformGate>
                   <SDKProvider>
                     <TooltipProvider>
                       <BackgroundImage />
                       <BackButtonHandler />
-                      <DeepLinkHandler />
-                      <NotifyProvider />
+                      {!harmonyBuild && <DeepLinkHandler />}
+                      {!harmonyBuild && <NotifyProvider />}
                       {children}
                       <Toaster />
                       <MFAModal />
                     </TooltipProvider>
                   </SDKProvider>
-                </ActivationGate>
+                </PlatformGate>
               </HarmonySecurityGate>
             </ProviderProvider>
           </ThemeProvider>

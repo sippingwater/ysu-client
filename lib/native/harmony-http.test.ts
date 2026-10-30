@@ -137,6 +137,43 @@ describe("Harmony bridge transport", () => {
     expect(send).toHaveBeenCalledTimes(1)
   })
 
+  it("follows the labor platform home redirect without bypassing the native transport", async () => {
+    const origin = "https://ldxt.ysu.edu.cn"
+    const locations = [origin, `${origin}/System/User/Login`]
+    const visited: string[] = []
+    vi.stubGlobal("window", {
+      YSUHarmony: {
+        postMessage(raw: string) {
+          const message = JSON.parse(raw)
+          const location = locations[visited.length]
+          visited.push(message.params.url)
+          queueMicrotask(() =>
+            window.__ysuHarmonyReply!({
+              id: message.id,
+              ok: true,
+              data: {
+                status: location ? 302 : 200,
+                headers: location ? { location } : {},
+                bodyBase64: btoa(location ? "" : "login"),
+              },
+            })
+          )
+        },
+      },
+    })
+    const response = await fetchWithJar(new SimpleCookieJar(), {
+      method: "GET",
+      url: `${origin}/System/Home/Index`,
+      redirect: "follow",
+    })
+    expect(visited).toEqual([
+      `${origin}/System/Home/Index`,
+      `${origin}/`,
+      `${origin}/System/User/Login`,
+    ])
+    expect(await response.text()).toBe("login")
+  })
+
   it("allows the CAS secondary-authentication redirect with its reviewed service callback", async () => {
     const service = "https://cer.ysu.edu.cn/personalInfo/personCenter/index.html"
     const target = `/authserver/reAuthCheck/reAuthLoginView.do?isMultifactor=true&service=${encodeURIComponent(service)}`

@@ -26,9 +26,11 @@ export class RequestPolicy {
     if (parsed.username || parsed.password || parsed.port || /[%\\]/.test(parsed.pathname)) {
       throw new Error('Request rejected');
     }
-    const schoolOrigin = /^https:\/\/(cer|jwxt|epay|ehall)\.ysu\.edu\.cn$/.test(parsed.origin);
+    const schoolOrigin = /^(https:\/\/(cer|jwxt|epay|ehall|ldxt|xgxt)\.ysu\.edu\.cn|http:\/\/(202\.206\.247\.49|xgxt\.ysu\.edu\.cn))$/.test(parsed.origin);
     if (depth > 0 && !schoolOrigin) throw new Error('Callback rejected');
-    const allowed = this.data.routes.concat(this.data.skbirdRoutes).some((route: Route) =>
+    const roleChange = method === 'POST' && parsed.origin === 'https://xgxt.ysu.edu.cn' &&
+      /^\/xsfw\/sys\/funauthapp\/api\/changeAppRole\/zhcptybbapp\/[A-Za-z0-9_-]+\.do$/.test(parsed.pathname);
+    const allowed = roleChange || this.data.routes.concat(this.data.skbirdRoutes).some((route: Route) =>
       route.origin === parsed.origin && route.method === method && route.path === parsed.pathname) ||
       (method === 'GET' && this.data.mediaRoutes.some((route: MediaRoute) =>
         route.origin === parsed.origin && parsed.pathname.startsWith(route.pathPrefix)));

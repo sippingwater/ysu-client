@@ -9,7 +9,7 @@ const www = join(raw, "www")
 const policyBytes = readFileSync(join(root, "harmony/security-policy.json"))
 if (!policyBytes.equals(readFileSync(join(raw, "security-policy.json")))) throw new Error("Packaged policy differs from reviewed source")
 const policy = JSON.parse(policyBytes)
-if (policy.routes.some((route) => !/^https:\/\/(cer|jwxt|epay|ehall)\.ysu\.edu\.cn$/.test(route.origin) ||
+if (policy.routes.some((route) => !/^(https:\/\/(cer|jwxt|epay|ehall|ldxt|xgxt)\.ysu\.edu\.cn|http:\/\/(202\.206\.247\.49|xgxt\.ysu\.edu\.cn)|https:\/\/xqh5\.17wanxiao\.com)$/.test(route.origin) ||
   !["GET", "POST"].includes(route.method) || /bysc|xgksrwxs|recharge|payment/i.test(route.path))) {
   throw new Error("Unexpected host or modifying action in request policy")
 }
@@ -33,7 +33,11 @@ const network = JSON.parse(readFileSync(join(root,
   "harmony/entry/src/main/resources/base/profile/network_config.json"), "utf8"))["network-security-config"]
 if (network["base-config"].cleartextTrafficPermitted !== false ||
   JSON.stringify(network["domain-config"]) !== JSON.stringify([{
-    domains: [{ name: "api.app.zanao.com", "include-subdomains": false }], cleartextTrafficPermitted: true,
+    domains: [
+      { name: "api.app.zanao.com", "include-subdomains": false },
+      { name: "202.206.247.49", "include-subdomains": false },
+      { name: "xgxt.ysu.edu.cn", "include-subdomains": false },
+    ], cleartextTrafficPermitted: true,
   }]) || network["component-config"]["Remote Communication Kit"] !== true) {
   throw new Error("Unexpected cleartext network exception")
 }

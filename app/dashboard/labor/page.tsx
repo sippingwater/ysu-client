@@ -4,25 +4,21 @@ import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import {
-  EmptyState,
-  LoadingCards,
-  useErrorToast,
-  ValidatingList,
-} from "@/components/academic/list-state"
+import { EmptyState, LoadingCards, ValidatingList } from "@/components/academic/list-state"
 import { formatTimeRange } from "@/lib/academic/time"
 import { useTranslation } from "@/lib/i18n/use-translation"
 import { useLaborActivities, useLaborRecords, useLaborSummary } from "@/providers/hooks"
 import { cn } from "@/lib/utils"
-import { Clock, MapPin, ScrollText, User } from "lucide-react"
+import { CircleAlert, Clock, MapPin, ScrollText, User } from "lucide-react"
 
-function RecordsPanel() {
+function RecordsPanel({ recordsQuery }: { recordsQuery: ReturnType<typeof useLaborRecords> }) {
   const { t } = useTranslation()
-  const recordsQuery = useLaborRecords()
   const records = recordsQuery.data ?? []
-  useErrorToast(recordsQuery.error)
 
+  if (recordsQuery.error && records.length === 0) return null
   if ((recordsQuery.isLoading || recordsQuery.isValidating) && records.length === 0) {
     return <LoadingCards className="h-28" />
   }
@@ -83,12 +79,15 @@ function RecordsPanel() {
   )
 }
 
-function ActivitiesPanel() {
+function ActivitiesPanel({
+  activitiesQuery,
+}: {
+  activitiesQuery: ReturnType<typeof useLaborActivities>
+}) {
   const { t } = useTranslation()
-  const activitiesQuery = useLaborActivities()
   const activities = activitiesQuery.data ?? []
-  useErrorToast(activitiesQuery.error)
 
+  if (activitiesQuery.error && activities.length === 0) return null
   if ((activitiesQuery.isLoading || activitiesQuery.isValidating) && activities.length === 0) {
     return <LoadingCards className="h-28" />
   }
@@ -161,44 +160,67 @@ export default function LaborPage() {
   const [tab, setTab] = useState<"records" | "activities">("records")
 
   const summaryQuery = useLaborSummary()
+  const recordsQuery = useLaborRecords(tab === "records")
+  const activitiesQuery = useLaborActivities(tab === "activities")
+  const activeQuery = tab === "records" ? recordsQuery : activitiesQuery
   const summary = summaryQuery.data
-  useErrorToast(summaryQuery.error)
+  const error = activeQuery.error ?? summaryQuery.error
+  const retrying = summaryQuery.isValidating || activeQuery.isValidating
+  const retry = () => Promise.allSettled([summaryQuery.mutate(), activeQuery.mutate()])
 
   return (
     <div className="flex flex-col gap-6">
-      <Card>
-        <CardContent className="py-4">
-          {summaryQuery.isLoading && !summary ? (
-            <div className="flex gap-8">
-              <Skeleton className="h-12 w-24" />
-              <Skeleton className="h-12 w-24" />
-            </div>
-          ) : summary ? (
-            <div
-              className={cn(
-                "flex gap-8 transition-opacity",
-                summaryQuery.isValidating && "opacity-50"
-              )}
-            >
-              <div className="flex flex-col">
-                <span className="text-xs text-muted-foreground">{t("labor.totalHours")}</span>
-                <span className="text-2xl font-semibold tabular-nums">
-                  {summary.totalHours ?? "-"}
-                  <span className="ml-1 text-sm font-normal text-muted-foreground">
-                    {t("labor.hoursUnit")}
+      {error && (
+        <Alert variant="destructive">
+          <CircleAlert />
+          <AlertTitle>{t("labor.loadFailed")}</AlertTitle>
+          <AlertDescription className="flex flex-col items-start gap-3">
+            <p>{t("labor.loadFailedHint")}</p>
+            <details className="w-full text-xs">
+              <summary className="cursor-pointer">{t("labor.errorDetails")}</summary>
+              <p className="mt-2 break-all">{error.message}</p>
+            </details>
+            <Button variant="outline" size="sm" disabled={retrying} onClick={() => void retry()}>
+              {t(retrying ? "app.updating" : "labor.retry")}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      {(summary || summaryQuery.isLoading) && (
+        <Card>
+          <CardContent className="py-4">
+            {summaryQuery.isLoading && !summary ? (
+              <div className="flex gap-8">
+                <Skeleton className="h-12 w-24" />
+                <Skeleton className="h-12 w-24" />
+              </div>
+            ) : summary ? (
+              <div
+                className={cn(
+                  "flex gap-8 transition-opacity",
+                  summaryQuery.isValidating && "opacity-50"
+                )}
+              >
+                <div className="flex flex-col">
+                  <span className="text-xs text-muted-foreground">{t("labor.totalHours")}</span>
+                  <span className="text-2xl font-semibold tabular-nums">
+                    {summary.totalHours ?? "-"}
+                    <span className="ml-1 text-sm font-normal text-muted-foreground">
+                      {t("labor.hoursUnit")}
+                    </span>
                   </span>
-                </span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs text-muted-foreground">{t("labor.totalCredits")}</span>
+                  <span className="text-2xl font-semibold tabular-nums">
+                    {summary.totalCredits ?? "-"}
+                  </span>
+                </div>
               </div>
-              <div className="flex flex-col">
-                <span className="text-xs text-muted-foreground">{t("labor.totalCredits")}</span>
-                <span className="text-2xl font-semibold tabular-nums">
-                  {summary.totalCredits ?? "-"}
-                </span>
-              </div>
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
+            ) : null}
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as "records" | "activities")}>
         <TabsList className="w-full">
@@ -207,10 +229,10 @@ export default function LaborPage() {
         </TabsList>
 
         <TabsContent value="records" className="mt-4">
-          <RecordsPanel />
+          <RecordsPanel recordsQuery={recordsQuery} />
         </TabsContent>
         <TabsContent value="activities" className="mt-4">
-          <ActivitiesPanel />
+          <ActivitiesPanel activitiesQuery={activitiesQuery} />
         </TabsContent>
       </Tabs>
     </div>

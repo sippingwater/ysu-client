@@ -1,76 +1,18 @@
-<p align="center">
-  <img src="public/icon.svg" width="128" height="128" alt="燕大终端图标" />
-</p>
+# 燕大终端 HarmonyOS 版
 
-<h1 align="center">燕大终端</h1>
+燕山大学教务系统第三方客户端，使用 Next.js 构建本地页面，并由 HarmonyOS ArkTS 与 ArkWeb 承载。应用并非学校官方产品。
 
-鸿蒙本地直连移植原型的安全边界、构建与设备验收说明见 [harmony/README.md](harmony/README.md)。鸿蒙原型尚未完成签名和真实账号的设备验收。
+鸿蒙工程位于 `harmony/`。`app/`、`components/`、`lib/`、`providers/` 等目录包含鸿蒙版依赖的共享页面、认证和查询逻辑。共享代码中的部分跨平台适配仍是当前构建依赖。
 
-<p align="center">
-  <a href="README.zh-CN.md">详细文档（中文）</a> · <a href="README.en.md">English</a>
-</p>
+## 构建
 
-<p align="center">
-  燕山大学教务系统第三方 Android 客户端
-</p>
+安装锁定的前端依赖，并配置 DevEco Studio 与 HarmonyOS SDK：
 
----
+```powershell
+pnpm install --frozen-lockfile
+pnpm run build:harmony:hap
+```
 
-> 本项目为 **第三方客户端，与燕山大学官方无任何关联。** 仅供个人学习交流，代码**完全由 AI 进行编写**，
-> 人工仅进行了基本设计调试与粗略审计，使用即默认了解并接受相关风险，请勿用于侵犯他人权益或违反学校规定的场景。
+未签名产物位于 `harmony/entry/build/default/outputs/default/entry-default-unsigned.hap`。设备安装通常需要自行配置开发者签名。构建、安全边界和设备验收说明见 [鸿蒙工程说明](harmony/README.md)。
 
-## 这是什么
-
-燕大终端是一个 Android 应用，可以让你更方便地使用燕山大学教务系统。设计初衷是解决第三方课表需手动更新，
-而今日校园 App 加载又过于缓慢，导致信息查询低效率的问题。
-
-本项目实现了以下功能：
-
-- **登录**：CAS 统一认证，支持验证码和 MFA 多因素验证，记住登录状态；
-  内置登录速率限制保护，防止频繁登录触发风控
-- **查成绩**：按学期筛选，查看统计、分布和排名；支持学期 GPA 计算与学位课程标识
-- **看课表**：合并理论课与实验课，按周切换，桌面和移动端双布局；
-  实时高亮当前课程，支持课程活动签到 / 签退，支持手动调课。
-- **查考试**：按学期查看考试安排
-- **看绩点**：学分和绩点一目了然
-- **培养方案**：查看课程完成情况和学业预警
-- **评教**：支持学生评教功能，评教支持批量一键自动填写最高分
-- **劳动平台**: 劳动记录和劳动时长
-- **双创平台**: 双创学分，认定记录，竞赛库等
-- **综合测评**: 综测成绩和指标明细查询
-- **全校课表**: 查询全校课表和空教室
-- **费用查询**: 空调用量，一卡通余额和缴费查询
-- **上课通知**：可按完整课表和未来周次生成提醒
-- **成绩/考试监听**：支持以最低 15 分钟的间隔监听教务系统，提醒新增成绩和考试安排变化
-- **桌面小组件**：提供课表与考试小组件
-
-应用通过 Capacitor 打包为 Android WebView 壳应用，支持 OTA 热更新与 APK 外壳版本检测。
-
-## 数据来源与安全性
-
-燕大终端 App 的所有业务逻辑**均在本地实现**，从官方教务系统获取数据并保存在本地，中间不经过任何其他服务器。
-登录之后的凭据数据存储在本地，凭据通过系统安全存储（Android Keystore / iOS Keychain）加密保存。
-
-为保证教务系统数据不受意外修改，本项目除学生评教外，均仅实现了数据查询功能。
-
-## 安装
-
-从 [GitHub Releases](https://github.com/Youwenqwq/ysu-client/releases) 下载最新的 APK 安装包。
-
-> 如遇网络故障，可在应用内配置 GitHub 代理镜像。设置入口会在出现网络故障时弹出。
-
-## 兼容性
-
-应用运行在系统 WebView 中。如遇渲染异常，请检查 WebView 版本是否过低——
-**最低要求 Chromium v111**。可通过 Play Store 等方式更新 Android System WebView。
-
-## 相关项目
-
-业务逻辑参考以下项目实现：
-
-- [ysu-sdk](https://github.com/Youwenqwq/ysu-sdk) — 教务系统 SDK
-- [ysu-api](https://github.com/Youwenqwq/ysu-api) — 教务系统 API 服务
-
-## 协议
-
-本项目源代码按 [GPL-3.0 协议](LICENSE) 开放。
+本项目遵循 GPL-3.0，详见 [LICENSE](LICENSE)。

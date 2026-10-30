@@ -168,9 +168,16 @@ export function useMakeupExamCourses(
   )
 }
 
-export function useLaborRecords(): ProviderQueryResult<LaborRecord[]> {
+export function useLaborRecords(enabled = true): ProviderQueryResult<LaborRecord[]> {
   const provider = useProvider()
-  return useProviderQuery("laborEducation", "labor-records", () => provider.getLaborRecords())
+  return useProviderQuery(
+    "laborEducation",
+    "labor-records",
+    () => provider.getLaborRecords(),
+    undefined,
+    undefined,
+    enabled
+  )
 }
 
 export function useLaborSummary(): ProviderQueryResult<LaborSummary> {
@@ -178,9 +185,16 @@ export function useLaborSummary(): ProviderQueryResult<LaborSummary> {
   return useProviderQuery("laborEducation", "labor-summary", () => provider.getLaborSummary())
 }
 
-export function useLaborActivities(): ProviderQueryResult<EnrollableActivity[]> {
+export function useLaborActivities(enabled = true): ProviderQueryResult<EnrollableActivity[]> {
   const provider = useProvider()
-  return useProviderQuery("laborEducation", "labor-activities", () => provider.getLaborActivities())
+  return useProviderQuery(
+    "laborEducation",
+    "labor-activities",
+    () => provider.getLaborActivities(),
+    undefined,
+    undefined,
+    enabled
+  )
 }
 
 export function useCreditBatches(): ProviderQueryResult<CreditBatch[]> {

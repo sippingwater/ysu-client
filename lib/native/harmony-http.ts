@@ -7,6 +7,7 @@ import {
 import { getCustomUserAgent } from "@/lib/custom-user-agent"
 import { harmonyCall } from "./harmony"
 import { assertHarmonyRequest } from "./harmony-policy"
+import { harmonyResponseBody } from "./harmony-response"
 
 interface NativeResponse {
   status: number
@@ -66,8 +67,6 @@ export async function harmonyHttpSend(
       await jar.setCookie(cookie, parsed.toString(), { ignoreError: true })
     }
   }
-  const binary = atob(response.bodyBase64)
-  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0))
   const contentType = normalized["content-type"]
   const type = Array.isArray(contentType) ? contentType[0] : contentType
   const charset = type?.match(/charset=["']?([^\s;"']+)/i)?.[1] || "utf-8"
@@ -75,7 +74,6 @@ export async function harmonyHttpSend(
     status: response.status,
     url: parsed.toString(),
     headers: normalized,
-    text: async () => new TextDecoder(charset).decode(bytes),
-    arrayBuffer: async () => bytes.buffer,
+    ...harmonyResponseBody(response.bodyBase64, charset),
   }
 }

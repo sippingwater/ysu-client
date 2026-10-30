@@ -120,8 +120,10 @@ export class NativeBridge {
     const origin = new url.URL(params.url).origin;
     const allowedHeaders: string[] = ['accept', 'accept-language', 'content-type',
       'user-agent', 'x-requested-with'];
-    if (/^https:\/\/(cer|jwxt|epay|ehall)\.ysu\.edu\.cn$/.test(origin)) {
+    if (/^(https:\/\/(cer|jwxt|epay|ehall|ldxt|xgxt)\.ysu\.edu\.cn|http:\/\/(202\.206\.247\.49|xgxt\.ysu\.edu\.cn))$/.test(origin)) {
       allowedHeaders.push('cookie', 'referer', 'origin');
+    } else if (origin === 'https://xqh5.17wanxiao.com') {
+      allowedHeaders.push('referer', 'origin');
     } else if (origin === 'http://api.app.zanao.com') {
       allowedHeaders.push('x-sc-client', 'x-sc-platform', 'x-sc-device', 'x-sc-hb-v',
         'x-sc-nt-v', 'x-sc-version', 'x-sc-alias', 'x-sc-td', 'x-sc-nd', 'x-sc-ah', 'x-sc-token');

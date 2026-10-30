@@ -25,7 +25,6 @@ describe("Harmony local-only security policy", () => {
     "http://jwxt.ysu.edu.cn/jwapp/sys/cjcx/modules/cjcx/xscjcx.do",
     "https://jwxt.ysu.edu.cn:8443/jwapp/sys/cjcx/modules/cjcx/xscjcx.do",
     "https://127.0.0.1/jwapp/sys/cjcx/modules/cjcx/xscjcx.do",
-    "https://xqh5.17wanxiao.com/smartWaterAndElectricityService/SWAEEncryptServlet",
     "https://open.weixin.qq.com/connect/qrconnect",
   ])("rejects proxies, third parties and alternate authorities: %s", (input) => {
     expect(() => assertHarmonyRequest("POST", input)).toThrow()
@@ -76,8 +75,71 @@ describe("Harmony local-only security policy", () => {
       policy.routes.filter((route) => /bysc|xgksrwxs|payment|recharge/.test(route.path))
     ).toEqual([])
     expect(
-      policy.routes.every((route) => /^https:\/\/[a-z]+\.ysu\.edu\.cn$/.test(route.origin))
+      policy.routes.every((route) =>
+        /^(https:\/\/[a-z]+\.ysu\.edu\.cn|http:\/\/(202\.206\.247\.49|xgxt\.ysu\.edu\.cn)|https:\/\/xqh5\.17wanxiao\.com)$/.test(
+          route.origin
+        )
+      )
     ).toBe(true)
+  })
+
+  it("allows the added query and authentication routes while rejecting other actions", () => {
+    for (const [method, target] of [
+      ["GET", "https://ldxt.ysu.edu.cn/XueFen/Summary"],
+      ["GET", "http://202.206.247.49/ysu_pt/UnifiedAuth/CASLogin"],
+      [
+        "POST",
+        "https://xgxt.ysu.edu.cn/xsfw/sys/zhcptybbapp/modules/evaluationApplyController/getCpxnxq.do",
+      ],
+      [
+        "POST",
+        "https://xgxt.ysu.edu.cn/xsfw/sys/funauthapp/api/changeAppRole/zhcptybbapp/student-1.do",
+      ],
+      ["POST", "https://xqh5.17wanxiao.com/smartWaterAndElectricityService/SWAEEncryptServlet"],
+    ])
+      expect(() => assertHarmonyRequest(method, target)).not.toThrow()
+    expect(() =>
+      assertHarmonyRequest("POST", "https://ldxt.ysu.edu.cn/XueFen/Enroll/Index")
+    ).toThrow()
+    expect(() =>
+      assertHarmonyRequest(
+        "POST",
+        "https://xgxt.ysu.edu.cn/xsfw/sys/funauthapp/api/changeAppRole/other/student.do"
+      )
+    ).toThrow()
+    expect(() =>
+      assertHarmonyRequest(
+        "GET",
+        "https://cer.ysu.edu.cn/authserver/login?service=" +
+          encodeURIComponent(
+            "https://xqh5.17wanxiao.com/smartWaterAndElectricityService/SWAEEncryptServlet"
+          )
+      )
+    ).toThrow()
+  })
+
+  it("allows the innovation platform authentication landing pages", () => {
+    for (const path of ["/ysu_pt", "/ysu_pt/", "/ysu_pt/System/User/LoginRole", "/ysu_pt/Error"]) {
+      expect(() => assertHarmonyRequest("GET", `http://202.206.247.49${path}`)).not.toThrow()
+      expect(() => assertHarmonyRequest("POST", `http://202.206.247.49${path}`)).toThrow()
+    }
+    expect(() =>
+      assertHarmonyRequest("GET", "http://202.206.247.49/ysu_pt/Unknown?ticket=secret")
+    ).toThrow("双创接口未获准：/ysu_pt/Unknown")
+    expect(() =>
+      assertHarmonyRequest("GET", "http://202.206.247.49/ysu_pt/secret123?ticket=secret")
+    ).toThrow("仅允许直接访问已审核的学校与森空鸟接口")
+  })
+
+  it("allows the labor home landing but not writes or unrelated endpoints", () => {
+    expect(() => assertHarmonyRequest("GET", "https://ldxt.ysu.edu.cn")).not.toThrow()
+    expect(() => assertHarmonyRequest("POST", "https://ldxt.ysu.edu.cn/")).toThrow()
+    expect(() =>
+      assertHarmonyRequest("GET", "https://ldxt.ysu.edu.cn/System/Unknown?ticket=secret")
+    ).toThrow("劳动教育接口未获准：/System/Unknown")
+    expect(() =>
+      assertHarmonyRequest("GET", "https://ldxt.ysu.edu.cn/System/secret123?ticket=secret")
+    ).toThrow("仅允许直接访问已审核的学校与森空鸟接口")
   })
 
   it("allows only the six reviewed mobile auth, activity and sign-in routes", () => {

@@ -9,17 +9,14 @@
     "build:harmony": "node scripts/build-harmony.mjs",
     "build:harmony:hap": "node scripts/build-harmony-native.mjs",
     "build:harmony:ecard-diagnostic": "node scripts/build-harmony-ecard-diagnostic.mjs",
-    "postbuild": "node scripts/generate-pwa-shell.mjs",
     "start": "next start",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "release": "bash scripts/release.sh"
+    "test": "vitest run"
   },
   "dependencies": {
     "@aparajita/capacitor-secure-storage": "^8.0.0",
-    "@capacitor/android": "^8.3.4",
     "@capacitor/app": "^8.1.0",
     "@capacitor/core": "^8.3.4",
     "@capacitor/device": "^8.0.2",
@@ -49,8 +46,6 @@
     "zustand": "^5.0.13"
   },
   "devDependencies": {
-    "@capacitor/assets": "^3.0.5",
-    "@capacitor/cli": "^8.3.4",
     "@eslint/eslintrc": "^3.3.5",
     "@tailwindcss/postcss": "^4.3.0",
     "@types/canvas-confetti": "^1.9.0",

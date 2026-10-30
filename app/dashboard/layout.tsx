@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
+import dynamic from "next/dynamic"
+import { isHarmony } from "@/lib/native/harmony"
 import { useAuthStore } from "@/lib/stores/auth"
 import { useMobileHeaderStore } from "@/lib/stores/mobile-header"
 import { cn } from "@/lib/utils"
@@ -60,7 +62,6 @@ import {
 import { isDashboardFeatureAvailable } from "@/lib/dashboard-features"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { useProviderCapabilities } from "@/providers/use-provider"
-import { UpdateDialog } from "@/components/update-dialog"
 import { APP_VERSION, APP_BUILD } from "@/lib/version"
 import { useStoredMediaUrl } from "@/lib/storage/media"
 import { loadAvatarImage } from "@/lib/storage/avatar"
@@ -69,6 +70,11 @@ const SIDEBAR_WIDTH_KEY = "dashboard-sidebar-width"
 const DEFAULT_SIDEBAR_WIDTH = 288 // 18rem
 const MIN_SIDEBAR_WIDTH = 208 // 13rem
 const MAX_SIDEBAR_WIDTH = 384 // 24rem
+
+const UpdateDialog = dynamic(
+  () => import("@/components/update-dialog").then((module) => module.UpdateDialog),
+  { ssr: false }
+)
 
 function SidebarResizeHandle() {
   const { state, setOpen, isMobile } = useSidebar()
@@ -145,7 +151,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter()
   const rawPathname = usePathname()
   const pathname = rawPathname.replace(/\/$/, "")
-  const { isAuthenticated, hasHydrated, username, sessionExpired } = useAuthStore()
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const hasHydrated = useAuthStore((state) => state.hasHydrated)
+  const username = useAuthStore((state) => state.username)
+  const sessionExpired = useAuthStore((state) => state.sessionExpired)
   const { t } = useTranslation()
   const fullscreenRequested = useMobileHeaderStore((s) => s.fullscreen)
   const mobileFullscreen = pathname === "/dashboard/schedule" && fullscreenRequested
@@ -302,7 +311,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       defaultOpen={defaultSidebarOpen}
       style={{ "--sidebar-width": `${sidebarWidth}px` } as React.CSSProperties}
     >
-      <UpdateDialog />
+      {!isHarmony() && <UpdateDialog />}
       <Sidebar
         collapsible="icon"
         className={

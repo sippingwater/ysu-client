@@ -6,7 +6,9 @@
     "domain-config": [
       {
         "domains": [
-          { "name": "api.app.zanao.com", "include-subdomains": false }
+          { "name": "api.app.zanao.com", "include-subdomains": false },
+          { "name": "202.206.247.49", "include-subdomains": false },
+          { "name": "xgxt.ysu.edu.cn", "include-subdomains": false }
         ],
         "cleartextTrafficPermitted": true
       }

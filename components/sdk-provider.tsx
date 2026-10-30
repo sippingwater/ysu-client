@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import dynamic from "next/dynamic"
 import { mutate } from "swr"
 import { toast } from "sonner"
 import { initializeActiveProvider, setActiveProviderSchool } from "@/providers/provider-service"
@@ -13,11 +14,18 @@ import { isCapacitor, isHarmony } from "@/lib/native/platform"
 import { blurActiveElement } from "@/lib/utils"
 import { initSafeArea } from "@/lib/native/webview-compat"
 import { trackAppLaunch } from "@/lib/analytics"
-import { AnalyticsPrompt } from "@/components/analytics-prompt"
 import { APP_VERSION } from "@/lib/version"
 import { useAnnouncementStore } from "@/lib/stores/announcement"
 import { checkAnnouncement } from "@/lib/announcement"
-import { AnnouncementDialog } from "@/components/announcement-dialog"
+
+const AnalyticsPrompt = dynamic(
+  () => import("@/components/analytics-prompt").then((module) => module.AnalyticsPrompt),
+  { ssr: false }
+)
+const AnnouncementDialog = dynamic(
+  () => import("@/components/announcement-dialog").then((module) => module.AnnouncementDialog),
+  { ssr: false }
+)
 
 export function SDKProvider({ children }: { children: React.ReactNode }) {
   const { t, locale } = useTranslation()
@@ -212,18 +220,20 @@ export function SDKProvider({ children }: { children: React.ReactNode }) {
   return (
     <>
       {children}
-      <AnalyticsPrompt
-        open={showAnalyticsPrompt}
-        onClose={() => {
-          setShowAnalyticsPrompt(false)
-          useSettingsStore.getState().setAnalyticsPromptVersion(APP_VERSION)
-          // Check announcements then updates after privacy prompt is closed
-          checkAnnouncementsThenUpdates()
-          // Try to track launch if user agreed
-          trackAppLaunch().catch(() => {})
-        }}
-      />
-      <AnnouncementDialog onDismissed={performUpdateCheck} />
+      {!isHarmony() && (
+        <AnalyticsPrompt
+          open={showAnalyticsPrompt}
+          onClose={() => {
+            setShowAnalyticsPrompt(false)
+            useSettingsStore.getState().setAnalyticsPromptVersion(APP_VERSION)
+            // Check announcements then updates after privacy prompt is closed
+            checkAnnouncementsThenUpdates()
+            // Try to track launch if user agreed
+            trackAppLaunch().catch(() => {})
+          }}
+        />
+      )}
+      {!isHarmony() && <AnnouncementDialog onDismissed={performUpdateCheck} />}
     </>
   )
 }

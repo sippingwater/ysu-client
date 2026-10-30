@@ -14,8 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Generated / build artifacts
     "dist/**",
-    "android/app/build/**",
-    "android/app/src/main/assets/public/**",
+    // Old Android build artifacts may remain locally after the Harmony-only cleanup.
+    "android/**",
     // Separate project
     "website/**",
     "harmony/**",

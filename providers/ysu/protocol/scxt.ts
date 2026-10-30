@@ -211,13 +211,13 @@ async function ensureAuthorized(): Promise<void> {
         redirect: "manual",
         timeoutMs,
       })
-    } catch (e) {
-      throw new ScxtProtocolError(`request failed for ${bridgeUrl}: ${(e as Error).message}`)
+    } catch {
+      throw new ScxtProtocolError("subsystem bridge request failed")
     }
     const ticketUrl = headerSingle(resp.headers, "location") ?? ""
     if ((resp.status !== 301 && resp.status !== 302) || !ticketUrl.includes("authserver/access")) {
       throw new ScxtProtocolError(
-        `subsystem bridge did not issue access ticket: ${resp.status} -> ${ticketUrl}`
+        `subsystem bridge did not issue access ticket: HTTP ${resp.status}`
       )
     }
 
@@ -229,8 +229,8 @@ async function ensureAuthorized(): Promise<void> {
         redirect: "manual",
         timeoutMs,
       })
-    } catch (e) {
-      throw new ScxtProtocolError(`access ticket consumption failed: ${(e as Error).message}`)
+    } catch {
+      throw new ScxtProtocolError("access ticket consumption failed")
     }
     if (resp.status !== 301 && resp.status !== 302) {
       throw new ScxtNotLoggedInError(`access ticket rejected: HTTP ${resp.status}`)
@@ -263,11 +263,11 @@ async function getPageAbs(url: string): Promise<string> {
       redirect: "follow",
       timeoutMs,
     })
-  } catch (e) {
-    throw new ScxtProtocolError(`request failed for ${url}: ${(e as Error).message}`)
+  } catch {
+    throw new ScxtProtocolError("authorization landing request failed")
   }
   if (resp.status >= 400) {
-    throw new ScxtProtocolError(`HTTP ${resp.status} from ${url}`)
+    throw new ScxtProtocolError(`authorization landing returned HTTP ${resp.status}`)
   }
   return resp.text()
 }
@@ -286,8 +286,8 @@ async function getPage(path: string, params?: Record<string, string | number>): 
       redirect: "follow",
       timeoutMs,
     })
-  } catch (e) {
-    throw new ScxtProtocolError(`request failed for ${url}: ${(e as Error).message}`)
+  } catch {
+    throw new ScxtProtocolError(`request failed for ${path}`)
   }
   let finalPath = ""
   try {
@@ -296,10 +296,10 @@ async function getPage(path: string, params?: Record<string, string | number>): 
     // resp.url 不可解析时视为未跳转登录页
   }
   if (finalPath === LOGIN_PATH) {
-    throw new ScxtNotLoggedInError(`redirected to login page: ${url}`)
+    throw new ScxtNotLoggedInError(`redirected to login page: ${path}`)
   }
   if (resp.status >= 400) {
-    throw new ScxtProtocolError(`HTTP ${resp.status} from ${url}`)
+    throw new ScxtProtocolError(`HTTP ${resp.status} from ${path}`)
   }
   return resp.text()
 }

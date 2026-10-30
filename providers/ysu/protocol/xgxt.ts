@@ -300,7 +300,7 @@ async function fetchActiveRoleId(): Promise<string | null> {
   const roleId =
     active !== null && typeof active === "object" ? (active as Record<string, unknown>)["id"] : null
   if (!roleId) {
-    throw new XgxtProtocolError(`getAppConfig 角色项缺少 id: ${JSON.stringify(active)}`)
+    throw new XgxtProtocolError("getAppConfig 角色项缺少 id")
   }
   return String(roleId)
 }
@@ -315,7 +315,7 @@ async function activateRole(roleId: string): Promise<void> {
       ? (setResult as Record<string, unknown>)["returnCode"]
       : null
   if (returnCode !== "#E000000000000") {
-    throw new XgxtProtocolError(`setXgCommonAppRole 响应异常: ${JSON.stringify(setResult)}`)
+    throw new XgxtProtocolError("setXgCommonAppRole 响应异常")
   }
 
   const changeResult = await rawPost(
@@ -326,7 +326,7 @@ async function activateRole(roleId: string): Promise<void> {
       ? (changeResult as Record<string, unknown>)["success"]
       : null
   if (success !== true) {
-    throw new XgxtProtocolError(`changeAppRole 响应异常: ${JSON.stringify(changeResult)}`)
+    throw new XgxtProtocolError("changeAppRole 响应异常")
   }
 }
 
@@ -350,15 +350,15 @@ async function rawPost(
       redirect: "follow",
       timeoutMs,
     })
-  } catch (e) {
-    throw new XgxtProtocolError(`request failed for ${url}: ${(e as Error).message}`)
+  } catch {
+    throw new XgxtProtocolError("role setup request failed")
   }
   const text = await resp.text()
   if (resp.status === 401 || resp.status === 403) {
-    throw new XgxtNotLoggedInError(`HTTP ${resp.status} from ${url}`)
+    throw new XgxtNotLoggedInError(`role setup returned HTTP ${resp.status}`)
   }
   if (resp.status >= 400) {
-    throw new XgxtProtocolError(`HTTP ${resp.status} from ${url}`)
+    throw new XgxtProtocolError(`role setup returned HTTP ${resp.status}`)
   }
   const contentType = headerSingle(resp.headers, "content-type") ?? ""
   if (contentType.includes("text/html") && text.includes("authserver/login")) {
@@ -367,7 +367,7 @@ async function rawPost(
   try {
     return JSON.parse(text)
   } catch {
-    throw new XgxtProtocolError(`non-JSON response from ${url}: ${text.slice(0, 200)}`)
+    throw new XgxtProtocolError("non-JSON response during role setup")
   }
 }
 
@@ -419,8 +419,8 @@ async function post(path: string, data: Record<string, string>): Promise<Record<
       redirect: "follow",
       timeoutMs,
     })
-  } catch (e) {
-    throw new XgxtProtocolError(`request failed for ${url}: ${(e as Error).message}`)
+  } catch {
+    throw new XgxtProtocolError(`request failed for ${path}`)
   }
   const text = await resp.text()
   if (resp.status === 401 || resp.status === 403) {
@@ -438,7 +438,7 @@ async function post(path: string, data: Record<string, string>): Promise<Record<
   try {
     result = JSON.parse(text) as Record<string, unknown>
   } catch {
-    throw new XgxtProtocolError(`non-JSON response from ${url}: ${text.slice(0, 200)}`)
+    throw new XgxtProtocolError(`non-JSON response from ${path}`)
   }
   const code = result["code"]
   if (code !== "0" && code !== 0) {

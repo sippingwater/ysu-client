@@ -274,6 +274,11 @@ describe("actual ArkTS request policy", () => {
     )
     expect(() => native.validate("GET", `${mfaPage}?service=${callback}`)).not.toThrow()
     expect(() => native.validate("POST", mfaPage)).toThrow()
+    for (const route of policy.routes.filter((item) => item.origin === "https://ldxt.ysu.edu.cn")) {
+      expect(() => native.validate(route.method, `${route.origin}${route.path}`)).not.toThrow()
+    }
+    expect(() => native.validate("GET", "https://ldxt.ysu.edu.cn/")).not.toThrow()
+    expect(() => native.validate("POST", "https://ldxt.ysu.edu.cn/")).toThrow()
     expect(() => native.validate("GET", `${mfaPage}?service=https://evil.example`)).toThrow()
     for (const url of [
       "https://ysu.welain.com/api/proxy",
